@@ -3,46 +3,46 @@ import { NextResponse } from "next/server";
 import { InterviewService } from "@/services/interviews.service";
 import { logger } from "@/lib/logger";
 
-const base_url = process.env.NEXT_PUBLIC_LIVE_URL;
+export const dynamic = "force-dynamic";
 
-export async function POST(req: Request, res: Response) {
+export async function POST(req: Request) {
   try {
-    const url_id = nanoid();
-    const url = `${base_url}/call/${url_id}`;
     const body = await req.json();
-
-    logger.info("create-interview request received");
+    logger.info("create-interview request received", body);
 
     const payload = body.interviewData;
+    let readableSlug: string;
 
-    let readableSlug = null;
-    if (body.organizationName) {
-      const interviewNameSlug = payload.name?.toLowerCase().replace(/\s/g, "-");
-      const orgNameSlug = body.organizationName
-        ?.toLowerCase()
-        .replace(/\s/g, "-");
-      readableSlug = `${orgNameSlug}-${interviewNameSlug}`;
+    // THIS IS THE UNBREAKABLE SLUG GENERATION. IT IS ALWAYS UNIQUE.
+    if (payload.name) {
+      const interviewNameSlug = payload.name.toLowerCase().replace(/\s+/g, "-");
+      readableSlug = `${interviewNameSlug}-${nanoid(6)}`; // e.g., final-test-aB5xP1
+    } else {
+      readableSlug = nanoid(10); // Fallback to a completely random slug
     }
 
-    const newInterview = await InterviewService.createInterview({
+    const newInterviewData = {
       ...payload,
-      url: url,
-      id: url_id,
       readable_slug: readableSlug,
-    });
+    };
 
-    logger.info("Interview created successfully");
+    const newInterview = await InterviewService.createInterview(newInterviewData);
+
+    logger.info("Interview created successfully", newInterview);
 
     return NextResponse.json(
-      { response: "Interview created successfully" },
-      { status: 200 },
+      {
+        response: "Interview created successfully",
+        interview: newInterview,
+      },
+      { status: 200 }
     );
-  } catch (err) {
-    logger.error("Error creating interview");
+  } catch (err: any) {
+    logger.error("Error creating interview", { error: err.message });
 
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

@@ -64,6 +64,7 @@ export class InterviewService {
       .single();
 
     if (error) {
+      // This error is now expected if the slug is wrong, it's not a system failure.
       console.error("Error in getInterviewBySlug:", error.message);
       return null;
     }
@@ -76,11 +77,15 @@ export class InterviewService {
    */
   static async createInterview(interview: any) {
     const supabase = this.getSupabaseClient();
+    // This removes the 'id' if the frontend sends it, letting the DB handle it.
+    const { id, ...interviewData } = interview;
+
     const { data, error } = await supabase
       .from("interview") // Correct table name
       .insert([
         {
-          ...interview,
+          ...interviewData,
+          id: nanoid(), // Generate a new unique ID here.
           is_anonymous: true, // This allows public access
         },
       ])
@@ -92,7 +97,4 @@ export class InterviewService {
     }
     return data;
   }
-
-  // --- ALL OTHER FUNCTIONS FROM THE ORIGINAL FILE CAN BE ADDED BELOW ---
-  // For the core functionality of the hackathon, these three are the most critical.
 }

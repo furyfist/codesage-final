@@ -90,7 +90,7 @@ function Call({ interview }: InterviewProps) {
     try {
       const result = await FeedbackService.submitFeedback({
         ...formData,
-        interview_id: interview.id,
+        interview_id: interview?.id,
       });
 
       if (result) {
@@ -236,6 +236,15 @@ function Call({ interview }: InterviewProps) {
 };
 
   const startConversation = async () => {
+    // Add safety check for interview object
+    if (!interview || !interview.id) {
+      console.error("Interview data is missing or invalid");
+      toast.error("Interview data is not available. Please refresh the page.");
+      setLoading(false);
+
+      return;
+    }
+
     const data = {
       mins: interview?.time_duration,
       objective: interview?.objective,
@@ -271,7 +280,7 @@ function Call({ interview }: InterviewProps) {
         setCallId(registerCallResponse?.data?.registerCallResponse?.call_id);
 
         const response = await createResponse({
-          interview_id: interview.id,
+          interview_id: interview?.id,
           call_id: registerCallResponse.data.registerCallResponse.call_id,
           email: email,
           name: name,
@@ -292,14 +301,20 @@ function Call({ interview }: InterviewProps) {
 
   useEffect(() => {
     const fetchInterviewer = async () => {
-      const interviewer = await InterviewerService.getInterviewer(
-        interview.interviewer_id,
-      );
-      setInterviewerImg(interviewer.image);
+      // THIS IS THE ARMOR. It safely checks if the interview and its ID exist.
+      if (!interview || !interview.interviewer_id) {
+        console.warn("Interview data or interviewer_id is missing, skipping fetch.");
+        return;
+      }
+      const response = await getInterviewerById(interview.interviewer_id);
+      if (response) {
+        setInterviewer(response);
+      }
     };
+
     fetchInterviewer();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interview.interviewer_id]);
+  }, [interview]); // Dependency is now the whole interview object for safety.
 
   useEffect(() => {
     if (isEnded) {
@@ -345,13 +360,13 @@ function Call({ interview }: InterviewProps) {
                 <div className="flex mt-2 flex-row">
                   <AlarmClockIcon
                     className="text-indigo-600 h-[1rem] w-[1rem] rotate-0 scale-100  dark:-rotate-90 dark:scale-0 mr-2 font-bold"
-                    style={{ color: interview.theme_color }}
+                    style={{ color: interview?.theme_color || "#4F46E5" }}
                   />
                   <div className="text-sm font-normal">
                     Expected duration:{" "}
                     <span
                       className="font-bold"
-                      style={{ color: interview.theme_color }}
+                      style={{ color: interview?.theme_color || "#4F46E5" }}
                     >
                       {interviewTimeDuration} mins{" "}
                     </span>
@@ -408,8 +423,8 @@ function Call({ interview }: InterviewProps) {
                   <Button
                     className="min-w-20 h-10 rounded-lg flex flex-row justify-center mb-8"
                     style={{
-                      backgroundColor: interview.theme_color ?? "#4F46E5",
-                      color: isLightColor(interview.theme_color ?? "#4F46E5")
+                      backgroundColor: interview?.theme_color || "#4F46E5",
+                      color: isLightColor(interview?.theme_color || "#4F46E5")
                         ? "black"
                         : "white",
                     }}
@@ -425,7 +440,7 @@ function Call({ interview }: InterviewProps) {
                     <AlertDialogTrigger>
                       <Button
                         className="bg-white border ml-2 text-black min-w-15 h-10 rounded-lg flex flex-row justify-center mb-8"
-                        style={{ borderColor: interview.theme_color }}
+                        style={{ borderColor: interview?.theme_color || "#4F46E5" }}
                         disabled={Loading}
                       >
                         Exit
@@ -468,7 +483,7 @@ function Call({ interview }: InterviewProps) {
                         height={120}
                         className={`object-cover object-center mx-auto my-auto ${
                           activeTurn === "agent"
-                            ? `border-4 border-[${interview.theme_color}] rounded-full`
+                            ? `border-4 border-[${interview?.theme_color || "#4F46E5"}] rounded-full`
                             : ""
                         }`}
                       />
@@ -492,7 +507,7 @@ function Call({ interview }: InterviewProps) {
                       height={120}
                       className={`object-cover object-center mx-auto my-auto ${
                         activeTurn === "user"
-                          ? `border-4 border-[${interview.theme_color}] rounded-full`
+                          ? `border-4 border-[${interview?.theme_color || "#4F46E5"}] rounded-full`
                           : ""
                       }`}
                     />

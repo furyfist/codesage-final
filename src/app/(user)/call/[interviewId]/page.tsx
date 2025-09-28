@@ -90,7 +90,7 @@ export default function InterviewPage({ params }: { params: { interviewId: strin
   // If everything is good, we render our new, upgraded component!
   return (
     <main className="h-screen w-full">
-      {interview && <CallComponent call={interview} isSetup={true} />}
+      {interview && <CallComponent interview={interview} />}
     </main>
   );
 }
