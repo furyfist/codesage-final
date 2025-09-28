@@ -2,12 +2,19 @@ import { NextResponse } from 'next/server';
 import { executeCode } from '@/services/codeExecution.service';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
+import OpenAI from 'openai';
+import { CODE_EXECUTION_FOLLOW_UP_PROMPT } from '@/lib/prompts/coding-interviewer';
 
 // Initialize Supabase client
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function POST(request: Request) {
   try {
@@ -17,34 +24,48 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    console.log(`Executing code for interview ${interview_id}...`);
+    console.log(`[Agentic Loop] Step 1: Executing code for interview ${interview_id}...`);
     const executionResult = await executeCode(code, language);
-    console.log('Execution result:', executionResult);
+    console.log('[Agentic Loop] Step 1 complete. Result:', executionResult);
 
     // Save the code execution attempt to our database
-    // This is crucial for generating the final report
     const { error: dbError } = await supabase.from('responses').insert({
       interview_id,
       user_id,
-      // We are storing code output in the 'response_text' field for now
-      response_text: JSON.stringify({
-        code,
-        language,
-        ...executionResult,
-      }),
-      // We'll mark these as 'code' type to distinguish from voice responses
+      response_text: JSON.stringify({ code, language, ...executionResult }),
       response_type: 'code_execution',
     });
+    if (dbError) console.error('Error saving code execution to Supabase:', dbError);
 
-    if (dbError) {
-      console.error('Error saving code execution to Supabase:', dbError);
-      // We'll still return the result to the user even if DB save fails
-    }
+    console.log('[Agentic Loop] Step 2: Generating AI follow-up...');
+    // --- THIS IS THE AGENTIC LOOP ---
+    // We take the result and feed it back to the AI to get the next spoken line.
+    let followUpPrompt = CODE_EXECUTION_FOLLOW_UP_PROMPT;
+    followUpPrompt = followUpPrompt.replace('{CODE}', code);
+    followUpPrompt = followUpPrompt.replace('{STATUS}', executionResult.status);
+    followUpPrompt = followUpPrompt.replace('{OUTPUT}', executionResult.output || 'None');
+    followUpPrompt = followUpPrompt.replace('{ERROR}', executionResult.error || 'None');
+    
+    const response = await openai.chat.completions.create({
+        model: "gpt-4-turbo",
+        messages: [{ role: "user", content: followUpPrompt }],
+        temperature: 0.6,
+    });
+    
+    const aiFollowUp = response.choices[0].message.content;
+    console.log('[Agentic Loop] Step 2 complete. AI Follow-up:', aiFollowUp);
 
-    return NextResponse.json(executionResult);
+    // We will later feed this aiFollowUp back into the Retell agent.
+    // For now, we'll send it to the frontend to display.
+
+    return NextResponse.json({
+        executionResult,
+        aiFollowUp,
+    });
 
   } catch (error: any) {
     console.error('Error in /api/coding/execute:', error);
     return NextResponse.json({ error: error.message || 'Failed to execute code' }, { status: 500 });
   }
 }
+

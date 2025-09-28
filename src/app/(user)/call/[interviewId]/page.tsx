@@ -1,162 +1,96 @@
 "use client";
 
-import { useInterviews } from "@/contexts/interviews.context";
 import { useEffect, useState } from "react";
-import Call from "@/components/call";
+import CallComponent from "@/components/call"; // Our new component!
 import Image from "next/image";
-import { ArrowUpRightSquareIcon } from "lucide-react";
-import { Interview } from "@/types/interview";
 import LoaderWithText from "@/components/loaders/loader-with-text/loaderWithText";
+import { Interview } from "@/types/interview";
 
-type Props = {
-  params: {
-    interviewId: string;
-  };
-};
-
-type PopupProps = {
-  title: string;
-  description: string;
-  image: string;
-};
+// Re-using the original file's structure for stability.
 
 function PopupLoader() {
   return (
-    <div className="bg-white rounded-md absolute -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 md:w-[80%] w-[90%]">
-      <div className="h-[88vh] justify-center items-center rounded-lg border-2 border-b-4 border-r-4 border-black font-bold transition-all md:block dark:border-white">
-        <div className="relative flex flex-col items-center justify-center h-full">
-          <LoaderWithText />
-        </div>
+    <div className="flex justify-center items-center h-screen w-full">
+      <div className="w-[90%] md:w-[80%] h-[88vh] flex justify-center items-center rounded-lg border-2 border-b-4 border-r-4 border-black dark:border-white">
+        <LoaderWithText />
       </div>
-      <a
-        className="flex flex-row justify-center align-middle mt-3"
-        href="https://folo-up.co/"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <div className="text-center text-md font-semibold mr-2">
-          Powered by{" "}
-          <span className="font-bold">
-            Folo<span className="text-indigo-600">Up</span>
-          </span>
-        </div>
-        <ArrowUpRightSquareIcon className="h-[1.5rem] w-[1.5rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-indigo-500" />
-      </a>
     </div>
   );
 }
 
-function PopUpMessage({ title, description, image }: PopupProps) {
+function PopUpMessage({ title, description, image }: { title: string; description: string; image: string; }) {
   return (
-    <div className="bg-white rounded-md absolute -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2 md:w-[80%] w-[90%]">
-      <div className="h-[88vh] content-center rounded-lg border-2 border-b-4 border-r-4 border-black font-bold transition-all  md:block dark:border-white ">
-        <div className="flex flex-col items-center justify-center my-auto">
-          <Image
-            src={image}
-            alt="Graphic"
-            width={200}
-            height={200}
-            className="mb-4"
-          />
-          <h1 className="text-md font-medium mb-2">{title}</h1>
-          <p>{description}</p>
+    <div className="flex justify-center items-center h-screen w-full">
+        <div className="w-[90%] md:w-[80%] h-[88vh] flex flex-col justify-center items-center rounded-lg border-2 border-b-4 border-r-4 border-black dark:border-white p-4">
+            <Image
+              src={image}
+              alt="Status Graphic"
+              width={200}
+              height={200}
+              className="mb-4"
+            />
+            <h1 className="text-xl font-medium mb-2 text-center">{title}</h1>
+            <p className="text-center">{description}</p>
         </div>
-      </div>
-      <a
-        className="flex flex-row justify-center align-middle mt-3"
-        href="https://folo-up.co/"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <div className="text-center text-md font-semibold mr-2">
-          Powered by{" "}
-          <span className="font-bold">
-            Folo<span className="text-indigo-600">Up</span>
-          </span>
-        </div>
-        <ArrowUpRightSquareIcon className="h-[1.5rem] w-[1.5rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-indigo-500" />
-      </a>
     </div>
   );
 }
 
-function InterviewInterface({ params }: Props) {
-  const [interview, setInterview] = useState<Interview>();
-  const [isActive, setIsActive] = useState(true);
-  const { getInterviewById } = useInterviews();
-  const [interviewNotFound, setInterviewNotFound] = useState(false);
-  useEffect(() => {
-    if (interview) {
-      setIsActive(interview?.is_active === true);
-    }
-  }, [interview, params.interviewId]);
+
+export default function InterviewPage({ params }: { params: { interviewId: string } }) {
+  const [interview, setInterview] = useState<Interview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchinterview = async () => {
+    const fetchInterviewData = async () => {
       try {
-        const response = await getInterviewById(params.interviewId);
-        if (response) {
-          setInterview(response);
-          document.title = response.name;
-        } else {
-          setInterviewNotFound(true);
+        const response = await fetch(`/api/get-call?interviewId=${params.interviewId}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Interview not found");
         }
-      } catch (error) {
-        console.error(error);
-        setInterviewNotFound(true);
+        const data: Interview = await response.json();
+        setInterview(data);
+        document.title = data.name;
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchinterview();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchInterviewData();
+  }, [params.interviewId]);
 
+  if (isLoading) {
+    return <PopupLoader />;
+  }
+
+  if (error) {
+    return (
+      <PopUpMessage
+        title="Invalid Interview"
+        description={error}
+        image="/invalid-url.png"
+      />
+    );
+  }
+  
+  if (!interview?.is_active) {
+    return (
+      <PopUpMessage
+        title="Interview Is Unavailable"
+        description="This interview is no longer active. Please contact the sender for more information."
+        image="/closed.png"
+      />
+    );
+  }
+
+  // If everything is good, we render our new, upgraded component!
   return (
-    <div>
-      <div className="hidden md:block p-8 mx-auto form-container">
-        {!interview ? (
-          interviewNotFound ? (
-            <PopUpMessage
-              title="Invalid URL"
-              description="The interview link you're trying to access is invalid. Please check the URL and try again."
-              image="/invalid-url.png"
-            />
-          ) : (
-            <PopupLoader />
-          )
-        ) : !isActive ? (
-          <PopUpMessage
-            title="Interview Is Unavailable"
-            description="We are not currently accepting responses. Please contact the sender for more information."
-            image="/closed.png"
-          />
-        ) : (
-          <Call interview={interview} />
-        )}
-      </div>
-      <div className=" md:hidden flex flex-col items-center md:h-[0px] justify-center  my-auto">
-        <div className="mt-48 px-3">
-          <p className="text-center my-5 text-md font-semibold">
-            {interview?.name}
-          </p>
-          <p className="text-center text-gray-600 my-5">
-            Please use a PC to respond to the interview. Apologies for any
-            inconvenience caused.{" "}
-          </p>
-        </div>
-        <div className="text-center text-md font-semibold mr-2 my-5">
-          Powered by{" "}
-          <a
-            className="font-bold underline"
-            href="www.folo-up.co"
-            target="_blank"
-          >
-            Folo<span className="text-indigo-600">Up</span>
-          </a>
-        </div>
-      </div>
-    </div>
+    <main className="h-screen w-full">
+      {interview && <CallComponent call={interview} isSetup={true} />}
+    </main>
   );
 }
-
-export default InterviewInterface;

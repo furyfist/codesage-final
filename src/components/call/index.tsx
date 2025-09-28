@@ -194,6 +194,46 @@ function Call({ interview }: InterviewProps) {
       setIsEnded(true);
     }
   };
+  const handleRunCode = async () => {
+    if (!user) return;
+    setIsExecuting(true);
+    setConsoleOutput("Executing code...");
+
+    try {
+        const response = await fetch('/api/coding/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                code,
+                language,
+                interview_id: call.id,
+                user_id: user.id,
+            }),
+        });
+
+        // Updated to handle the new response structure
+        const { executionResult, aiFollowUp } = await response.json();
+
+        if (response.ok) {
+            let output = `Status: ${executionResult.status}\n`;
+            output += `Time: ${executionResult.executionTime}s\n`;
+            output += `Memory: ${executionResult.memory} KB\n\n`;
+            if (executionResult.output) output += `Output:\n${executionResult.output}\n\n`;
+            if (executionResult.error) output += `Error:\n${executionResult.error}\n\n`;
+
+            // Add the AI's spoken follow-up to the console!
+            output += `--- AI INTERVIEWER ---\n${aiFollowUp}`;
+            setConsoleOutput(output);
+        } else {
+            setConsoleOutput(`Error: ${(executionResult as any).error || 'Failed to execute code.'}`);
+        }
+    } catch (error) {
+        console.error("Failed to run code:", error);
+        setConsoleOutput("An unexpected error occurred.");
+    } finally {
+        setIsExecuting(false);
+    }
+};
 
   const startConversation = async () => {
     const data = {
