@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useOrganization } from "@clerk/nextjs";
 import InterviewCard from "@/components/dashboard/interview/interviewCard";
 import CreateInterviewCard from "@/components/dashboard/interview/createInterviewCard";
+import CreateInterviewModal from "@/components/dashboard/interview/createInterviewModal";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { InterviewService } from "@/services/interviews.service";
 import { ClientService } from "@/services/clients.service";
@@ -21,6 +22,7 @@ function Interviews() {
   const [allowedResponsesCount, setAllowedResponsesCount] =
     useState<number>(10);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
 
   function InterviewsLoader() {
     return (
@@ -110,7 +112,7 @@ function Interviews() {
               </CardContent>
             </Card>
           ) : (
-            <CreateInterviewCard />
+            <CreateInterviewCard setOpen={setIsCreateModalOpen} />
           )}
           {interviewsLoading || loading ? (
             <InterviewsLoader />
@@ -180,6 +182,15 @@ function Interviews() {
           )}
         </div>
       </div>
+      <Modal
+        open={isCreateModalOpen}
+        closeOnOutsideClick={false}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+        }}
+      >
+        <CreateInterviewModal open={isCreateModalOpen} setOpen={setIsCreateModalOpen} />
+      </Modal>
     </main>
   );
 }

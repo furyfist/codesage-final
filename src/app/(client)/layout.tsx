@@ -13,15 +13,15 @@ import { usePathname } from "next/navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 const metadata = {
-  title: "FoloUp",
+  title: "CodeSage",
   description: " AI-powered Interviews",
   openGraph: {
-    title: "FoloUp",
+    title: "CodeSage",
     description: "AI-powered Interviews",
-    siteName: "FoloUp",
+    siteName: "CodeSage",
     images: [
       {
-        url: "/foloup.png",
+        url: "/codesage.png",
         width: 800,
         height: 600,
       },

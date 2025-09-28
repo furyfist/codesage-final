@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import CallComponent from "@/components/call"; // Our new component!
+import Call from "@/components/call"; // Our new component!
 import Image from "next/image";
 import LoaderWithText from "@/components/loaders/loader-with-text/loaderWithText";
 import { Interview } from "@/types/interview";
@@ -90,7 +90,7 @@ export default function InterviewPage({ params }: { params: { interviewId: strin
   // If everything is good, we render our new, upgraded component!
   return (
     <main className="h-screen w-full">
-      {interview && <CallComponent interview={interview} />}
+      {interview && <Call interview={interview} />}
     </main>
   );
 }
